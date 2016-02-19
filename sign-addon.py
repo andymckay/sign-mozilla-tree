@@ -13,7 +13,7 @@ import jwt
 
 AMO_KEY = os.environ['AMO_SIGNING_KEY']
 AMO_SECRET = os.environ['AMO_SIGNING_SECRET']
-server = 'https://addons-dev.allizom.org'
+server = 'https://addons.mozilla.org'
 
 found = []
 signed = []
