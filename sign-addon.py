@@ -23,7 +23,6 @@ files_to_ignore = (
     'toolkit/mozapps/extensions/test/addons/test_install4/badaddon.xpi',
     'toolkit/mozapps/extensions/test/addons/test_install7/addon1.xpi',
     'toolkit/mozapps/extensions/test/addons/test_install7/addon2.xpi',
-    'toolkit/mozapps/extensions/test/mochitest/file_bug687194.xpi',
     'toolkit/mozapps/extensions/test/xpcshell/data/corrupt.xpi',
     'toolkit/mozapps/extensions/test/xpcshell/data/corruptfile.xpi',
     # These shouldn't be signed at all.
@@ -135,9 +134,6 @@ def sign_addon(path):
                 shutil.copyfileobj(res.raw, download.file)
                 print ' Downloaded to %s' % download.name
                 downloaded = True
-        else:
-            print ' Warning. No files in response.'
-            return
 
         if downloaded:
             break
@@ -171,7 +167,7 @@ def check_auth():
 
 def find_addons(dir_or_file):
     if os.path.isfile(dir_or_file):
-        sign_addon(path)
+        sign_addon(dir_or_file)
         return
 
     found_files = []
