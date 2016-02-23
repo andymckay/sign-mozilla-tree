@@ -5,11 +5,12 @@ import sys
 import tempfile
 import time
 
-from xml import sax
 from zipfile import ZipFile
 
 import requests
 import jwt
+
+from utils import get_id_version, is_signed
 
 AMO_KEY = os.environ['AMO_SIGNING_KEY']
 AMO_SECRET = os.environ['AMO_SIGNING_SECRET']
@@ -31,48 +32,6 @@ files_to_ignore = (
     # Not sure...
     'toolkit/mozapps/extensions/test/xpcshell/data/signing_checks/hotfix_broken.xpi'
 )
-
-
-class RDF(sax.ContentHandler):
-    def __init__(self):
-        self.id = ''
-        self.version = ''
-        self.tag = None
-
-    def startElement(self, name, attrs):
-        if self.id and self.version:
-            return
-        self.tag = name
-
-    def characters(self, chars):
-        if self.tag == 'em:id':
-            self.id += chars
-        if self.tag == 'em:version':
-            self.version += chars
-
-    def endElement(self, *args, **kw):
-        self.tag = None
-
-
-def get_id_version(path):
-    print ' Getting id and version.'
-    zippy = ZipFile(open(path, 'r'))
-    filedata = zippy.read('install.rdf')
-    parser = sax.make_parser()
-    handler = RDF()
-    parser.setContentHandler(handler)
-    sax.parseString(filedata, handler)
-    return handler.id.strip(), handler.version.strip()
-
-
-def is_signed(path):
-    print ' Checking signed.'
-    assert os.path.exists(path)
-    assert path.endswith('.xpi')
-    zippy = ZipFile(open(path, 'r'))
-    if 'META-INF' in zippy.namelist():
-        return True
-    return False
 
 
 def sign_addon(path):
@@ -176,7 +135,7 @@ def find_addons(dir_or_file):
             if filename.endswith('.xpi'):
                 found_files.append(os.path.join(root, filename))
 
-    for k, filename in enumerate(found_files[20:]):
+    for k, filename in enumerate(found_files):
         print 'File: %s.' % (k + 1)
         sign_addon(filename)
 
