@@ -26,10 +26,17 @@ class RDF(sax.ContentHandler):
         self.tag = None
 
 
+def is_xpi(path):
+    return os.path.isfile(path)
+
 def get_id_version(path):
     print ' Getting id and version.'
-    zippy = ZipFile(open(path, 'r'))
-    filedata = zippy.read('install.rdf')
+    if is_xpi(path):
+        zippy = ZipFile(open(path, 'r'))
+        filedata = zippy.read('install.rdf')
+    else:
+        filedata = open(os.path.join(path, 'install.rdf'), 'r').read()
+
     parser = sax.make_parser()
     handler = RDF()
     parser.setContentHandler(handler)
@@ -40,10 +47,13 @@ def get_id_version(path):
 def is_signed(path):
     print ' Checking signed.'
     assert os.path.exists(path)
-    assert path.endswith('.xpi')
-    zippy = ZipFile(open(path, 'r'))
-    if 'META-INF/mozilla.sf' in zippy.namelist():
-        return True
+    if is_xpi(path):
+        zippy = ZipFile(open(path, 'r'))
+        if 'META-INF/mozilla.sf' in zippy.namelist():
+            return True
+    else:
+        return 'META-INF' in os.listdir(path)
+
     return False
 
 
@@ -52,18 +62,27 @@ def set_version(path, old_version, new_version):
     tmpfd, tmpname = tempfile.mkstemp()
     os.close(tmpfd)
 
-    with ZipFile(path, 'r') as zin:
-        with ZipFile(tmpname, 'w') as zout:
-            for item in zin.infolist():
-                filedata = zin.read(item.filename)
+    def replace(data):
+        return data.replace(
+            '<em:version>%s</em:version>' % old_version,
+            '<em:version>%s</em:version>' % new_version
+        )
 
-                if item.filename == 'install.rdf':
-                    filedata = filedata.replace(
-                        '<em:version>%s</em:version>' % old_version,
-                        '<em:version>%s</em:version>' % new_version
-                    )
+    if is_xpi(path):
+        with ZipFile(path, 'r') as zin:
+            with ZipFile(tmpname, 'w') as zout:
+                for item in zin.infolist():
+                    filedata = zin.read(item.filename)
 
-                zout.writestr(item, filedata)
+                    if item.filename == 'install.rdf':
+                        filedata = replace(filedata)
 
-    os.remove(path)
-    shutil.copy(tmpname, path)
+                    zout.writestr(item, filedata)
+
+        os.remove(path)
+        shutil.copy(tmpname, path)
+
+    else:
+        filedata = open(os.path.join(path, 'install.rdf'), 'r').read()
+        filedata = replace(filedata)
+        open(os.path.join(path, 'install.rdf'), 'w').write(filedata)

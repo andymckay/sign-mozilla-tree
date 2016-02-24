@@ -7,10 +7,12 @@ import time
 
 from zipfile import ZipFile
 
+import tempfile
+
 import requests
 import jwt
 
-from utils import get_id_version, is_signed
+from utils import get_id_version, is_xpi, is_signed
 
 AMO_KEY = os.environ['AMO_SIGNING_KEY']
 AMO_SECRET = os.environ['AMO_SIGNING_SECRET']
@@ -35,6 +37,27 @@ files_to_ignore = (
 
 
 def sign_addon(path):
+    if is_xpi(path):
+        sign(path, copyover=True)
+
+    else:
+        tmpfd, tmpname = tempfile.mkstemp()
+        os.close(tmpfd)
+        orig = os.path.curdir
+        with ZipFile(tmpname, 'w') as zout:
+            for root, dirs, files in os.walk(path):
+                for filename in files:
+                    os.chdir(root)
+                    zout.write(filename)
+
+        os.chdir(orig)
+        filename = sign(tmpname, copyover=False)
+
+        with ZipFile(filename, 'w') as zin:
+            zin.extractall(path)
+
+
+def sign(path, copyover=False):
     if path.endswith(files_to_ignore):
         print 'Skipping: %s' % path
         return
@@ -44,6 +67,7 @@ def sign_addon(path):
     print 'Signing addon: %s' % path
     if is_signed(path):
         print 'Addon: %s is already signed' % path
+        return
 
     id, version = get_id_version(path)
     print ' ID: %s, Version: %s' % (id, version)
@@ -68,8 +92,6 @@ def sign_addon(path):
 
     downloaded = False
     for x in range(0, 120):
-        time.sleep(1)
-        print ' ... waiting.'
         res = requests.get(
             url,
             headers=server_auth()
@@ -89,17 +111,22 @@ def sign_addon(path):
                     headers=server_auth()
                 )
                 assert res.status_code == 200
-                download = tempfile.NamedTemporaryFile()
-                shutil.copyfileobj(res.raw, download.file)
-                print ' Downloaded to %s' % download.name
+                download, download_name = tempfile.mkstemp('.xpi')
+                open(download_name, 'w').write(res.content)
+                print ' Downloaded to %s' % download_name
                 downloaded = True
+
 
         if downloaded:
             break
+
+        time.sleep(1)
+        print ' ... waiting.'
     else:
         print ' Warning: failed to download for %s' % path
 
-    shutil.copy(download.name, path)
+
+    shutil.copy(download_name, path)
     print 'Signing complete for %s' % path
     signed.append(path)
 
@@ -126,7 +153,7 @@ def check_auth():
 
 def find_addons(dir_or_file):
     if os.path.isfile(dir_or_file):
-        sign_addon(dir_or_file)
+        sign(dir_or_file)
         return
 
     found_files = []
@@ -135,12 +162,16 @@ def find_addons(dir_or_file):
             if filename.endswith('.xpi'):
                 found_files.append(os.path.join(root, filename))
 
+# Attempt to sign directories, but that's a bit flaky.
+#    if not found_files:
+#        sign_addon(dir_or_file)
+
     for k, filename in enumerate(found_files):
         print 'File: %s.' % (k + 1)
         sign_addon(filename)
 
     print '-'  * 40
-    print 'Found %s addons.'
+    print 'Found %s addons.' % len(found_files)
 
     print 'The following were NOT signed:'
     for path in found:
