@@ -65,9 +65,9 @@ def sign(path, copyover=False):
     found.append(path)
     print
     print 'Signing addon: %s' % path
-    if is_signed(path):
-        print 'Addon: %s is already signed' % path
-        return
+    #if is_signed(path):
+    #    print 'Addon: %s is already signed' % path
+    #    return
 
     id, version = get_id_version(path)
     print ' ID: %s, Version: %s' % (id, version)
@@ -90,7 +90,7 @@ def sign(path, copyover=False):
                 return
 
 
-    downloaded = False
+    exit = False
     for x in range(0, 120):
         res = requests.get(
             url,
@@ -114,10 +114,12 @@ def sign(path, copyover=False):
                 download, download_name = tempfile.mkstemp('.xpi')
                 open(download_name, 'w').write(res.content)
                 print ' Downloaded to %s' % download_name
-                downloaded = True
+                exit = True
+            else:
+                print ' File there, but not signed.'
+                exit = True
 
-
-        if downloaded:
+        if exit:
             break
 
         time.sleep(1)
@@ -173,14 +175,17 @@ def find_addons(dir_or_file):
     print '-'  * 40
     print 'Found %s addons.' % len(found_files)
 
-    print 'The following were NOT signed:'
-    for path in found:
-        if path not in signed:
-            print ' %s' % path
+    not_signed = [path for path in found if path not in signed]
+    if not_signed:
+        print 'The following were NOT signed:'
+        for path in found:
+            if path not in signed:
+                print ' %s' % path
 
-    print 'The following %s were signed:' % len(signed)
-    for path in signed:
-        print ' %s' % path
+    if signed:
+        print 'The following %s were signed:' % len(signed)
+        for path in signed:
+            print ' %s' % path
 
 
 if __name__ == '__main__':
