@@ -1,4 +1,5 @@
 import os
+import pprint
 import random
 import shutil
 import sys
@@ -65,9 +66,9 @@ def sign(path, copyover=False):
     found.append(path)
     print
     print 'Signing addon: %s' % path
-    #if is_signed(path):
-    #    print 'Addon: %s is already signed' % path
-    #    return
+    if is_signed(path):
+        print 'Addon: %s is already signed' % path
+        return
 
     id, version = get_id_version(path)
     print ' ID: %s, Version: %s' % (id, version)
@@ -91,7 +92,7 @@ def sign(path, copyover=False):
 
 
     exit = False
-    for x in range(0, 120):
+    for x in range(0, 8):
         res = requests.get(
             url,
             headers=server_auth()
@@ -119,6 +120,10 @@ def sign(path, copyover=False):
                 print ' File there, but not signed.'
                 exit = True
 
+        if x > 6:
+            print ' Taking more than a few seconds, likely something went wrong...'
+            pprint.pprint(res.json())
+
         if exit:
             break
 
@@ -127,10 +132,10 @@ def sign(path, copyover=False):
     else:
         print ' Warning: failed to download for %s' % path
 
-
-    shutil.copy(download_name, path)
-    print 'Signing complete for %s' % path
-    signed.append(path)
+    if exit:
+        shutil.copy(download_name, path)
+        print 'Signing complete for %s' % path
+        signed.append(path)
 
 
 def server_auth():
