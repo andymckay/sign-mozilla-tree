@@ -92,6 +92,7 @@ def sign(path, copyover=False):
 
 
     exit = False
+    downloaded = False
     for x in range(0, 8):
         res = requests.get(
             url,
@@ -115,9 +116,11 @@ def sign(path, copyover=False):
                 download, download_name = tempfile.mkstemp('.xpi')
                 open(download_name, 'w').write(res.content)
                 print ' Downloaded to %s' % download_name
+                downloaded = True
                 exit = True
             else:
                 print ' File there, but not signed.'
+                pprint.pprint(res.json())
                 exit = True
 
         if x > 6:
@@ -132,7 +135,7 @@ def sign(path, copyover=False):
     else:
         print ' Warning: failed to download for %s' % path
 
-    if exit:
+    if downloaded:
         shutil.copy(download_name, path)
         print 'Signing complete for %s' % path
         signed.append(path)
@@ -154,6 +157,7 @@ def server_auth():
 
 def check_auth():
     url = server + '/api/v3/accounts/profile/'
+    print 'Checking server auth:', url
     res = requests.get(url, headers=server_auth())
     assert res.status_code == 200, 'Could not authenticate with server'
 

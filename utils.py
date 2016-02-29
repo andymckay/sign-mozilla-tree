@@ -29,6 +29,7 @@ class RDF(sax.ContentHandler):
 def is_xpi(path):
     return os.path.isfile(path)
 
+
 def get_id_version(path):
     print ' Getting id and version.'
     if is_xpi(path):
